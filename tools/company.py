@@ -2,8 +2,6 @@
 def get_company_info(company_name: str) -> dict:
     """Retrieve sample company information from local data."""
 
-    print(f"🔧 TOOL CALLED: get_company_info({company_name})")
-
     companies = {
         "datadog": {
             "name": "Datadog",
@@ -26,6 +24,6 @@ def get_company_info(company_name: str) -> dict:
     }
 
     return companies.get(
-        company_name.strip().lower(),
+        str(company_name or "").strip().lower(),
         {"error": f"No local information for {company_name}"}
     )

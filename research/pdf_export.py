@@ -1,5 +1,6 @@
 """Convert a CompanyIQ Markdown report into a PDF."""
 
+import re
 from datetime import date
 from pathlib import Path
 
@@ -21,6 +22,25 @@ TAG_STYLES = {
     "h4": TextStyle(font_family=FONT_FAMILY, font_style="B", font_size_pt=11,
                     color=HEADING_COLOR, t_margin=3, b_margin=0.3),
 }
+
+
+def _markdown_to_safe_html(text: str) -> str:
+    """Turn the report's Markdown into HTML for the PDF, safely.
+
+    The report is written by the AI from public webpages, so it is treated
+    as untrusted: raw HTML in it is shown as plain text, and images are
+    dropped (the PDF library would otherwise try to load an image from any
+    path or web address the report names).
+    """
+
+    converter = markdown.Markdown(extensions=["tables", "sane_lists"])
+    converter.preprocessors.deregister("html_block")
+    for pattern in ("html", "image_link", "image_reference", "short_image_ref"):
+        converter.inlinePatterns.deregister(pattern)
+
+    html = converter.convert(text)
+    # Belt and braces: no <img> tag may reach the PDF renderer.
+    return re.sub(r"<img\b[^>]*>", "", html, flags=re.IGNORECASE)
 
 
 def _strip_unsupported(text: str) -> str:
@@ -68,10 +88,7 @@ def report_to_pdf(company_name: str, report_markdown: str) -> bytes:
     pdf.ln(6)
     pdf.set_text_color(0, 0, 0)
 
-    html = markdown.markdown(
-        _strip_unsupported(report_markdown),
-        extensions=["tables", "sane_lists"],
-    )
+    html = _markdown_to_safe_html(_strip_unsupported(report_markdown))
 
     pdf.set_font(FONT_FAMILY, "", 11)
     pdf.write_html(html, font_family=FONT_FAMILY, tag_styles=TAG_STYLES,

@@ -1,5 +1,6 @@
 
 import ipaddress
+import logging
 import socket
 from urllib.parse import urlparse
 
@@ -7,19 +8,27 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import (
-    MAX_WEBPAGE_CALLS,
+    MAX_WEBPAGE_BYTES,
     MAX_WEBPAGE_CHARACTERS,
     REQUEST_TIMEOUT,
 )
 
+from .budget import take_webpage
 
-webpage_calls = 0
+logger = logging.getLogger(__name__)
 
 
 def is_safe_url(url: str) -> bool:
     """Allow HTTPS URLs with public network destinations."""
 
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return False
+
+    if port not in (None, 443):
+        return False
 
     if parsed.scheme != "https":
         return False
@@ -46,13 +55,6 @@ def is_safe_url(url: str) -> bool:
         return False
 
 
-def reset_webpage_budget():
-    """Reset the webpage counter for a new research session."""
-
-    global webpage_calls
-    webpage_calls = 0
-
-
 def read_webpage(url: str) -> dict:
     """Read text from a public HTML webpage.
 
@@ -60,12 +62,8 @@ def read_webpage(url: str) -> dict:
         url: The HTTPS URL of a public HTML webpage.
     """
 
-    global webpage_calls
-
-    print(f"🌐 TOOL CALLED: read_webpage({url})")
-
-    if webpage_calls >= MAX_WEBPAGE_CALLS:
-        return {"error": "Webpage budget exhausted."}
+    url = str(url or "").strip()
+    logger.info("read_webpage(%r)", url[:300])
 
     if not is_safe_url(url):
         return {"error": "URL is not allowed."}
@@ -73,7 +71,8 @@ def read_webpage(url: str) -> dict:
     if urlparse(url).path.lower().endswith(".pdf"):
         return {"error": "PDF reading is not supported yet."}
 
-    webpage_calls += 1
+    if not take_webpage():
+        return {"error": "Webpage budget exhausted."}
 
     try:
         # Disable redirects until we add redirect validation.
@@ -82,6 +81,7 @@ def read_webpage(url: str) -> dict:
             timeout=REQUEST_TIMEOUT,
             allow_redirects=False,
             headers={"User-Agent": "CompanyIQ/0.1"},
+            stream=True,
         )
 
         if 300 <= response.status_code < 400:
@@ -98,9 +98,19 @@ def read_webpage(url: str) -> dict:
         if "text/html" not in content_type:
             return {"error": "URL did not return HTML."}
 
+        # Read at most MAX_WEBPAGE_BYTES, so a huge page can't use up memory.
+        body = b""
+        for chunk in response.iter_content(chunk_size=65536):
+            body += chunk
+            if len(body) >= MAX_WEBPAGE_BYTES:
+                body = body[:MAX_WEBPAGE_BYTES]
+                break
+        response.close()
+
         soup = BeautifulSoup(
-            response.text,
+            body,
             "html.parser",
+            from_encoding=response.encoding,
         )
 
         for element in soup(
@@ -118,7 +128,6 @@ def read_webpage(url: str) -> dict:
             strip=True,
         )
 
-        print("✅ Webpage retrieved successfully.")
 
         return {
             "url": response.url,
@@ -127,5 +136,5 @@ def read_webpage(url: str) -> dict:
         }
 
     except requests.RequestException as error:
-        print(f"❌ Webpage retrieval failed: {error}")
-        return {"error": str(error)}
+        logger.warning("Webpage retrieval failed: %s", error)
+        return {"error": "Could not read this webpage."}
