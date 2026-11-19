@@ -117,6 +117,48 @@ def split_report(report: str) -> ReportParts:
     return ReportParts(intro="\n".join(intro_lines).strip(), sections=sections)
 
 
+FOCUS_MARKER = "team focus"
+
+
+def split_focus(report: str) -> tuple[Section | None, str]:
+    """Pull the "Team focus" section out of the report.
+
+    Returns (focus section or None, the rest of the report). The app shows
+    the focus section near the top, so it is taken out of its place at the
+    end of the report.
+    """
+
+    lines = report.splitlines()
+    headings = _find_headings(lines)
+    level = _pick_section_level(headings)
+
+    if level is None:
+        return None, report
+
+    starts = [i for i, lvl, _ in headings if lvl == level]
+    for i, lvl, text in headings:
+        if lvl == level and FOCUS_MARKER in text.lower():
+            later = [s for s in starts if s > i]
+            end = later[0] if later else len(lines)
+            section = Section(
+                title=_clean_title(text),
+                body="\n".join(lines[i + 1:end]).strip(),
+            )
+            rest = "\n".join(lines[:i] + lines[end:]).strip()
+            return section, rest
+
+    return None, report
+
+
+def focus_to_markdown(section: Section | None) -> str:
+    """Write the focus section as Markdown so the PDF can include it."""
+
+    if not section:
+        return ""
+
+    return f"## {section.title}\n\n{section.body}".strip()
+
+
 SNAPSHOT_FACTS = [
     ("industry", "Industry"),
     ("founded", "Founded"),

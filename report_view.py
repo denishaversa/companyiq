@@ -4,7 +4,7 @@ from html import escape
 
 import streamlit as st
 
-from research.layout import SNAPSHOT_FACTS, split_report
+from research.layout import SNAPSHOT_FACTS, split_focus, split_report
 
 NOT_STATED = {"", "not stated", "n/a", "unknown"}
 
@@ -32,6 +32,7 @@ STYLE = """
 .ciq-sev.high {background: #FBE7E5; color: #B42318;}
 .ciq-sev.medium {background: #FBEFD9; color: #B45309;}
 .ciq-sev.low {background: #E3F1EF; color: #0F766E;}
+.ciq-focus-title {font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;}
 </style>
 """
 
@@ -110,13 +111,37 @@ def _show_extras(title: str, snapshot: dict | None) -> None:
             ))
 
 
-def show_report(report: str, snapshot: dict | None) -> None:
-    """Render the snapshot, then each report section in its own expander."""
+def _show_focus(section, focus_team: str) -> None:
+    """Show the team focus section in its own highlighted box."""
+
+    title = section.title if section else f"Team Focus: {focus_team}"
+
+    with st.container(border=True):
+        _html('<div class="ciq-label">Your team focus</div>')
+        _html(f'<div class="ciq-focus-title">{escape(title)}</div>')
+        if section:
+            st.markdown(section.body or "_No details in this section._")
+        else:
+            st.caption(
+                "The report didn't include a separate section on this team. "
+                "Try running the research again."
+            )
+
+
+def show_report(
+    report: str, snapshot: dict | None, focus_team: str | None = None
+) -> None:
+    """Render the snapshot, the team focus (if any), then each report
+    section in its own expander."""
 
     _html(STYLE)
 
     if snapshot:
         _show_snapshot(snapshot)
+
+    if focus_team:
+        focus, report = split_focus(report)
+        _show_focus(focus, focus_team)
 
     parts = split_report(report)
 
