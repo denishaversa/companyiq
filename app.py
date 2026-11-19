@@ -2,8 +2,10 @@ import re
 
 import streamlit as st
 
-from agent import research_company
+from agent import research_company, summarize_report
+from research.layout import snapshot_to_markdown
 from research.pdf_export import report_to_pdf
+from report_view import show_report
 
 st.set_page_config(
     page_title="CompanyIQ",
@@ -41,6 +43,9 @@ if st.button("Research Company", type="primary"):
 
                 st.session_state["report"] = report
                 st.session_state["company"] = company_name.strip()
+                st.session_state["snapshot"] = summarize_report(
+                    company_name.strip(), report
+                )
 
             except Exception as error:
                 st.error(f"Research failed: {error}")
@@ -52,16 +57,26 @@ if "report" in st.session_state:
         f"Company Research: {st.session_state['company']}"
     )
 
-    st.markdown(st.session_state["report"])
+    snapshot = st.session_state.get("snapshot")
+
+    show_report(st.session_state["report"], snapshot)
 
     company_slug = re.sub(
         r"[^A-Za-z0-9]+", "_", st.session_state["company"]
     ).strip("_").lower() or "company"
 
     try:
+        # The PDF always holds the whole report, every section in full,
+        # whatever is open or closed on screen.
+        pdf_markdown = "\n\n".join(
+            part for part in (
+                snapshot_to_markdown(snapshot),
+                st.session_state["report"],
+            ) if part
+        )
         pdf_bytes = report_to_pdf(
             st.session_state["company"],
-            st.session_state["report"],
+            pdf_markdown,
         )
     except Exception as error:
         st.error(f"Could not build the PDF: {error}")
