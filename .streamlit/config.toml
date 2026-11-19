@@ -1,0 +1,9 @@
+# CompanyIQ theme: "Soft warm" light look.
+# Setting a theme here stops Streamlit from following the viewer's
+# device dark mode, so everyone sees the same light design.
+[theme]
+base = "light"
+primaryColor = "#0F766E"            # deep teal: buttons, links, highlights
+backgroundColor = "#FAF8F5"         # warm off-white page background
+secondaryBackgroundColor = "#EFEDE8" # light warm gray: input boxes, sidebar
+textColor = "#1F2937"               # dark slate text
