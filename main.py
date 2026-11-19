@@ -15,7 +15,12 @@ def main():
         print("Please enter a company name.")
         return
 
-    report = research_company(company_name)
+    focus_team = input(
+        "Which team or department do you want to know more about? "
+        "(optional, press Enter to skip) "
+    ).strip()
+
+    report = research_company(company_name, focus_team or None)
 
     display_report(company_name, report)
 

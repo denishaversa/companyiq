@@ -16,8 +16,12 @@ from research import create_research_plan
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
-def research_company(company_name: str) -> str:
-    """Run a CompanyIQ research session."""
+def research_company(company_name: str, focus_team: str | None = None) -> str:
+    """Run a CompanyIQ research session.
+
+    focus_team is an optional team or department to cover in its own
+    section, for example "Marketing" or "Data Engineering".
+    """
 
     reset_webpage_budget()
 
@@ -39,7 +43,7 @@ def research_company(company_name: str) -> str:
         ),
     )
 
-    research_plan = create_research_plan(company_name)
+    research_plan = create_research_plan(company_name, focus_team)
 
     try:
         response = chat.send_message(research_plan)
