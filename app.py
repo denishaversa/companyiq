@@ -1,7 +1,9 @@
+import re
 
 import streamlit as st
 
 from agent import research_company
+from research.pdf_export import report_to_pdf
 
 st.set_page_config(
     page_title="CompanyIQ",
@@ -52,9 +54,21 @@ if "report" in st.session_state:
 
     st.markdown(st.session_state["report"])
 
-    st.download_button(
-        "Download Report",
-        data=st.session_state["report"],
-        file_name="companyiq_report.md",
-        mime="text/markdown",
-    )
+    company_slug = re.sub(
+        r"[^A-Za-z0-9]+", "_", st.session_state["company"]
+    ).strip("_").lower() or "company"
+
+    try:
+        pdf_bytes = report_to_pdf(
+            st.session_state["company"],
+            st.session_state["report"],
+        )
+    except Exception as error:
+        st.error(f"Could not build the PDF: {error}")
+    else:
+        st.download_button(
+            "Download Report (PDF)",
+            data=pdf_bytes,
+            file_name=f"companyiq_{company_slug}_report.pdf",
+            mime="application/pdf",
+        )
