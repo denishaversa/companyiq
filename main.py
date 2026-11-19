@@ -1,5 +1,5 @@
 
-from agent import research_company
+from agent import ResearchError, research_company
 from research import display_report
 
 
@@ -20,7 +20,11 @@ def main():
         "(optional, press Enter to skip) "
     ).strip()
 
-    report = research_company(company_name, focus_team or None)
+    try:
+        report = research_company(company_name, focus_team or None)
+    except ResearchError as error:
+        print(error)
+        return
 
     display_report(company_name, report)
 

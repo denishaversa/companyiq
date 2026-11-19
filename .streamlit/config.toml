@@ -7,3 +7,15 @@ primaryColor = "#0F766E"            # deep teal: buttons, links, highlights
 backgroundColor = "#FAF8F5"         # warm off-white page background
 secondaryBackgroundColor = "#EFEDE8" # light warm gray: input boxes, sidebar
 textColor = "#1F2937"               # dark slate text
+
+[client]
+# Visitors don't need Streamlit's developer menu or detailed error traces.
+toolbarMode = "viewer"
+showErrorDetails = "none"
+
+[server]
+# Uploads aren't used; keep requests small.
+maxUploadSize = 1
+
+[browser]
+gatherUsageStats = false
